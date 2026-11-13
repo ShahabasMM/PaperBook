@@ -1,156 +1,329 @@
-# PaperBook
+<div align="center">
+  <img src="assets/logo/paperbook.png" alt="PaperBook Logo" width="120" height="120">
+  <h1>PaperBook</h1>
+  <p><strong>A quiet, offline-first home for receipts, warranties, invoices and the everyday documents that matter.</strong></p>
+  <p>Built with Flutter for iOS, Android, and Web.</p>
+  
+  <p>
+    <a href="#features"><strong>Features</strong></a> •
+    <a href="#screenshots"><strong>Screenshots</strong></a> •
+    <a href="#getting-started"><strong>Getting Started</strong></a> •
+    <a href="#architecture"><strong>Architecture</strong></a> •
+    <a href="#testing"><strong>Testing</strong></a> •
+    <a href="#tech-stack"><strong>Tech Stack</strong></a>
+  </p>
+</div>
 
-A quiet, offline-first home for receipts, warranties, invoices and the everyday
-documents that matter. Built with Flutter for iOS and Android.
+---
 
-## Design
+## ✨ Features
 
-- **Palette** — warm paper background `#F7F8F5`, ink `#171717`, quiet grey
-  `#777777`, and a single lime accent `#DFFF00` reserved for primary actions and
-  active states. Full dark mode uses `#101010` / `#1A1A1A`.
-- **Type** — Space Grotesk for brand and headings, Inter for body and detail.
-- **Motion** — short fades, a 10px reveal, 0.98 press scale. Nothing bounces.
-- **Layout** — one 4pt spacing scale, a shared radius scale, and content capped
-  at 760pt on tablets.
+### 📱 Core Experience
+| Feature | Description |
+|---------|-------------|
+| **Offline-First** | No accounts, no cloud, no tracking. Your data stays on your device. |
+| **Dark & Light Themes** | System-aware themes with a warm paper aesthetic and a single lime accent (`#DFFF00`). |
+| **Folder-First Dashboard** | Organize bills into folders (Petrol, Rent, Groceries, etc.) with auto-assigned icons. |
+| **Activity Heatmap** | Full-year contribution-style heatmap showing document activity at a glance. |
+| **Smart Library** | List/grid layouts, live search, category filters, warranty filter, and multi-sort options. |
 
-### Brand assets
+### 📄 Document Management
+- **Multi-path Add Flow** — Camera scan, photo library, PDF import, or manual entry
+- **Unified Review Screen** — Every path flows through the same editable review
+- **Rich Metadata** — Title, amount, date, category, folder, notes, warranty/return dates
+- **Warranty & Return Countdowns** — Automatic day counters with color-coded urgency
+- **Full-Screen Preview** — Zoomable image viewer and paper-style PDF preview
+- **Share & Download** — Native share sheet and platform save dialog
 
-The source mark is `assets/logo/paperbook.png`. Every launcher icon (Android,
-iOS, macOS, Windows, web) plus the in-app logo asset and the web splash mark are
-generated from it:
+### 📸 Document Scanning (Mobile)
+| Capability | Details |
+|------------|---------|
+| **Native Edge Detection** | Live boundary feedback via `doclens` on iOS/Android |
+| **Auto-Capture** | Stability-based shutter with haptic feedback |
+| **Perspective Correction** | Automatic crop & warp to rectangular scans |
+| **Multi-Page Support** | Add, retake, delete, reorder pages |
+| **Corner Adjustment** | Draggable handles for precise cropping |
+| **Non-Destructive** | Original full-resolution capture preserved alongside enhanced scan |
+| **Local PDF Generation** | Multi-page PDF assembled on-device with `pdf` package |
+
+### 🌐 Web Support (Chrome)
+- **Browser Scanning** — Live `getUserMedia` preview with lime corner guide
+- **Pure-Dart Processing** — `PerspectiveWarp` + `ImageEnhance` from doclens fallback
+- **Inline Storage** — Scans stored as `data:` URLs in IndexedDB-backed SQLite
+- **Same Review Flow** — Retake, add page, corner adjust, swipe-to-save
+- **Manual Entry** — Full document creation without camera access
+
+### ⚙️ Settings & Data
+- Theme selection (Light/Dark/System)
+- Library layout (List/Grid)
+- Storage summary with breakdown
+- One-tap data clearing (documents, folders, settings)
+- App version & build info
+
+---
+
+## 📸 Screenshots
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><strong>Home Dashboard</strong></td>
+      <td align="center"><strong>Scan Review</strong></td>
+      <td align="center"><strong>Document Detail</strong></td>
+    </tr>
+    <tr>
+      <td><img src="docs/screenshots/home.png" alt="Home" width="200"></td>
+      <td><img src="docs/screenshots/scan_review.png" alt="Scan Review" width="200"></td>
+      <td><img src="docs/screenshots/document_detail.png" alt="Document Detail" width="200"></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Library</strong></td>
+      <td align="center"><strong>Folder View</strong></td>
+      <td align="center"><strong>Settings</strong></td>
+    </tr>
+    <tr>
+      <td><img src="docs/screenshots/library.png" alt="Library" width="200"></td>
+      <td><img src="docs/screenshots/folder.png" alt="Folder" width="200"></td>
+      <td><img src="docs/screenshots/settings.png" alt="Settings" width="200"></td>
+    </tr>
+  </table>
+</div>
+
+> **Note**: Add screenshots to `docs/screenshots/` to populate the table above.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- **Flutter SDK** ≥ 3.24 (stable channel)
+- **Dart SDK** ≥ 3.5
+- **Android Studio** / **Xcode** for mobile builds
+- **Chrome** for web development
+
+### Installation
 
 ```bash
-python3 tool/generate_icons.py
-```
+# Clone the repository
+git clone https://github.com/yourusername/paperbook.git
+cd paperbook
 
-The script crops the white canvas, extracts the book mark and re-renders it at
-the exact size each platform expects, so new icons always match the source art.
-
-## Features
-
-- Dark, textured welcome experience.
-- Folder-first dashboard with a live activity heatmap and a grid of folders.
-- Folders for repeated bills such as petrol, rent or groceries. Folders get an
-  icon automatically from their name, and their documents can be sorted by date
-  or title.
-- Library with list/grid layouts, live search, category filters, warranty filter
-  and sorting.
-- Add via camera, photo library, PDF import or manual entry — every path flows
-  through the same editable review screen.
-- **Document scanning** on iOS and Android: native edge detection with live
-  boundary feedback, auto-capture, and automatic crop/perspective correction.
-  Multi-page scans can have pages added, retaken, deleted and corner-adjusted
-  before saving.
-- **Nothing is destructive.** Each scan keeps the untouched full-resolution
-  original alongside the enhanced, perspective-corrected copy. A multi-page
-  scan also gets a locally generated PDF. Originals are never overwritten or
-  deleted by enhancement.
-- Document details with preview, metadata, warranty/return countdowns, notes,
-  share, download and delete. Scanned documents preview their first processed
-  page and show their page count.
-- Full-screen zoomable image preview and a paper-style PDF preview.
-- Settings for appearance, library layout, storage summary and data clearing.
-- Everything is stored locally: SQLite for metadata, app-private storage for
-  attachments. There is no account, backend or upload — cloud sync for scans is
-  intentionally deferred.
-- Runs on iOS and Android, with a Chrome preview that keeps documents in
-  IndexedDB. File attachments and camera scanning are mobile-only; manual entry
-  and browsing work on the web.
-
-## Project structure
-
-```
-lib/
-  core/        design tokens, theme, formatters and reusable widgets
-  data/        models, SQLite database, repository, settings controller
-  features/    onboarding, shell, home, documents, folders, add, scan, settings
-test/          model, repository, migration, PDF and end-to-end widget tests
-```
-
-## Scanning
-
-Scanning uses [`doclens`](https://pub.dev/packages/doclens) for the native
-camera pipeline — edge detection, auto-capture and perspective warp — with a
-custom PaperBook interface built on top. PDFs are assembled locally with
-[`pdf`](https://pub.dev/packages/pdf).
-
-Each scan is persisted as one self-contained, app-private bundle:
-
-```
-<app storage>/scans/<timestamp>_<suffix>/
-  original_1.jpg   # untouched full-resolution capture
-  scan_1.jpg       # enhanced, perspective-corrected copy
-  original_2.jpg
-  scan_2.jpg
-  document.pdf     # multi-page PDF of the processed scans
-```
-
-The document's `file_path` points at the PDF, `pdf_path` mirrors it, and
-`page_count` records the number of pages. `document_pages` stores each page's
-original and processed paths. Deleting a document removes the whole bundle;
-files imported before scanning (stored directly in media storage) are left on
-the existing per-file cleanup path.
-
-Temporary scanner and PDF files are caller-owned and deleted once a scan is
-saved or discarded.
-
-## Run
-
-```bash
+# Install dependencies
 flutter pub get
-flutter run            # pick an iOS/Android device, or Chrome
+
+# Generate launcher icons (optional, uses assets/logo/paperbook.png)
+python3 tool/generate_icons.py
+
+# Run on your preferred platform
+flutter run                    # Shows device picker
+flutter run -d chrome          # Web (Chrome)
+flutter run -d ios             # iOS Simulator/Device
+flutter run -d android         # Android Emulator/Device
 ```
 
-On first run in a browser, the web SQLite binaries must be present. They are
-already committed, and can be regenerated with:
+### Web Development Tips
 
 ```bash
+# Use a fixed port to persist IndexedDB data between runs
+flutter run -d chrome --web-port 8080
+
+# If web SQLite binaries are missing:
 dart run sqflite_common_ffi_web:setup
 ```
 
-Browser storage is scoped to the origin, port included, so use a fixed port to
-keep web preview data between runs:
+### Platform Requirements
 
-```bash
-flutter run -d chrome --web-port 8080
+| Platform | Minimum Version | Notes |
+|----------|----------------|-------|
+| iOS | 15.0 | Requires Xcode + CocoaPods |
+| Android | API 24 (Android 7.0) | Camera permission in manifest |
+| Web | Chrome 90+ | HTTPS or localhost required for camera |
+
+---
+
+## 🏗 Architecture
+
+### Project Structure
+```
+paperbook/
+├── lib/
+│   ├── core/                    # Design system & utilities
+│   │   ├── theme/               # Colors, spacing, typography, theme data
+│   │   ├── utils/               # Formatters, attachment handling
+│   │   └── widgets/             # Reusable UI components (buttons, sheets, etc.)
+│   ├── data/                    # Data layer
+│   │   ├── database/            # SQLite (sqflite) + migrations
+│   │   ├── models/              # Document, Folder, Page, ScanBundle
+│   │   └── repositories/        # DocumentRepository (single source of truth)
+│   └── features/                # Feature modules (MVVM-ish)
+│       ├── add/                 # Document creation flows
+│       ├── documents/           # Library, detail, viewer, actions
+│       ├── folders/             # Folder CRUD & folder-scoped library
+│       ├── home/                # Dashboard, heatmap, folder grid
+│       ├── scan/                # Scanner, review, PDF, web scanner
+│       ├── settings/            # Preferences, storage, about
+│       ├── shell/               # Bottom navigation, app scaffold
+│       └── startup/             # Boot, onboarding, error screens
+├── test/                        # Unit, widget & integration tests
+├── tool/                        # Icon generation script
+└── assets/                      # Logo, fonts, icons
 ```
 
-If you launch on an unsupported target, startup now shows a readable error
-screen instead of a blank window.
+### Key Patterns
+- **Repository Pattern** — `DocumentRepository` wraps SQLite, exposes reactive streams via `ChangeNotifier`
+- **Provider DI** — Repository & settings provided at app root
+- **Route-based Navigation** — `MaterialPageRoute` with typed arguments
+- **Platform Channels** — Native scanner via `doclens` (iOS/Android), pure Dart on web
+- **Inline Attachments** — Web scans stored as `data:` URLs; mobile uses file bundles
 
-## Verify
+### Data Model Highlights
+```
+Document
+├── id, title, amount, category, folderId
+├── documentDate, warrantyExpiry, returnExpiry
+├── filePath, pdfPath, fileType, fileSize, pageCount
+├── createdAt, updatedAt
+└── DocumentPage[] (originalPath, scanPath, pageIndex)
+
+ScanBundle (transient, pre-persistence)
+├── ScanPageDraft[] (originalPath, cropPath)
+└── pdfPath?
+```
+
+---
+
+## 🧪 Testing
 
 ```bash
-flutter analyze
+# Run all tests
 flutter test
-flutter build web --release
-flutter build apk --debug
+
+# Run with coverage
+flutter test --coverage
+
+# Run specific test file
+flutter test test/repository_test.dart
+
+# Run integration tests (requires device)
+flutter test integration_test/
 ```
 
-The test suite uses `sqflite_common_ffi`, so no simulator or device is needed.
-It covers the database migrations, scan bundle persistence and cleanup, local
-PDF generation and the scanner review flow.
+### Test Coverage Areas
+- **Database Migrations** — Schema v1→v2→v3 with data preservation
+- **Repository** — CRUD, scan bundles, folder operations, cleanup
+- **PDF Generation** — Multi-page assembly, inline bytes (web), file paths (mobile)
+- **Scanner Review Flow** — Retake, adjust corners, add/delete pages, swipe-to-save
+- **UI Rendering** — Heatmap responsiveness, folder grid, form validation
 
-### Browser scanning (Chrome)
+---
 
-On the web the Add Document sheet shows **Scan your bill** and **Enter details
-manually**. The scanner opens a live `getUserMedia` preview with a lime corner
-guide. Captured frames are decoded, perspective-warped and contrast-enhanced
-using doclens' pure-Dart `PerspectiveWarp` and `ImageEnhance` fallbacks.
-Multi-page scans are supported with the same review screen: retake, add page,
-and corner adjustment via a draggable overlay.
+## 🛠 Tech Stack
 
-Pages and the generated PDF are stored as inline `data:` URLs inside the
-IndexedDB-backed SQLite database — no filesystem access is required. The same
-`DocumentRepository.addScanned` path is used, so the rest of the app (preview,
-viewer, share, download) works unchanged. Share uses the native web share
-target; download streams the bytes via `file_saver`.
+| Category | Technology |
+|----------|------------|
+| **Framework** | Flutter 3.24+, Dart 3.5+ |
+| **Database** | SQLite via `sqflite` + `sqflite_common_ffi_web` |
+| **State Management** | `provider` (ChangeNotifier) |
+| **Navigation** | Flutter Navigator 1.0 |
+| **Scanner (Mobile)** | `doclens` 0.0.12 (native edge detection + warp) |
+| **Scanner (Web)** | `camera` 0.12.2 (`camera_web`) + doclens Dart fallbacks |
+| **PDF** | `pdf` 3.13.1 |
+| **Image Processing** | `image` (mobile), `dart:ui` (web) |
+| **File Handling** | `path_provider`, `file_picker`, `image_picker`, `file_saver` |
+| **Sharing** | `share_plus` |
+| **Icons/Fonts** | Space Grotesk + Inter, Material Icons |
 
-> **Caveats:** Camera access requires HTTPS (or `localhost`). The browser
-> permission prompt appears on first use. Inline storage inflates the
-> IndexedDB size — acceptable for testing, but the mobile file-bundle model
-> remains the primary design.
+---
 
-Real camera behaviour (edge detection, auto-capture, warping) needs a physical
-iOS or Android device. iOS builds additionally require a complete Xcode
-installation with CocoaPods.
+## 📦 Build & Release
+
+### Debug Builds
+```bash
+# Android
+flutter build apk --debug
+
+# iOS (requires Xcode)
+flutter build ios --debug
+
+# Web
+flutter build web --debug
+```
+
+### Release Builds
+```bash
+# Android (App Bundle for Play Store)
+flutter build appbundle --release
+
+# iOS (Archive for App Store)
+flutter build ipa --release
+
+# Web (Production)
+flutter build web --release --wasm
+```
+
+### Versioning
+Update `version` in `pubspec.yaml`:
+```yaml
+version: 1.0.0+1   # version+build_number
+```
+
+---
+
+## 🔧 Configuration
+
+### Environment-Specific
+- **Android**: Camera permission in `android/app/src/main/AndroidManifest.xml`
+- **iOS**: `NSCameraUsageDescription` in `ios/Runner/Info.plist`
+- **Web**: HTTPS required for `getUserMedia` (works on `localhost`)
+
+### Theme Customization
+Edit `lib/core/theme/app_colors.dart` and `app_typography.dart` to adjust:
+- Color palette (light/dark)
+- Spacing & radius scales
+- Font families & text styles
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Code Style
+```bash
+# Format
+dart format lib test
+
+# Analyze
+flutter analyze
+
+# Test
+flutter test
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- [`doclens`](https://pub.dev/packages/doclens) — Native document scanning pipeline
+- [`pdf`](https://pub.dev/packages/pdf) — PDF generation
+- [`sqflite`](https://pub.dev/packages/sqflite) — SQLite bindings
+- [`camera`](https://pub.dev/packages/camera) — Camera access (mobile + web)
+- Space Grotesk & Inter — Typography
+- Flutter team — The framework
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ using Flutter. <br>
+  PaperBook — Your documents, your device, your privacy.</sub>
+</div>
