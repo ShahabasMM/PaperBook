@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the welcome screen so launch never flashes white. -->
+    <color name="launch_background">#101010</color>
+    <!-- App icon tile colour. -->
+    <color name="ic_launcher_background">#030303</color>
+</resources>

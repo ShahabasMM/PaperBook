@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="PaperBook — a premium personal document vault.">
+  <meta name="theme-color" content="#101010">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="PaperBook">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>PaperBook</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #101010;
+    }
+
+    #pb-launch {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: #101010;
+      color: #F4F5F0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      transition: opacity 240ms ease;
+    }
+
+    #pb-launch.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #pb-launch .logo {
+      width: 58px;
+      height: auto;
+      display: block;
+    }
+
+    #pb-launch .word {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="pb-launch">
+    <img class="logo" src="brand-mark.png" width="58" height="47" alt="">
+    <div class="word">PaperBook</div>
+  </div>
+
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var launch = document.getElementById('pb-launch');
+      if (!launch) return;
+      launch.classList.add('is-hidden');
+      setTimeout(function () { launch.remove(); }, 300);
+    });
+  </script>
+
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
