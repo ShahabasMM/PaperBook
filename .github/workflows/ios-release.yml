@@ -1,0 +1,44 @@
+name: iOS Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS IPA (Release)
+        run: flutter build ipa --release --no-tree-shake-icons
+
+      - name: Find IPA
+        id: find_ipa
+        run: |
+          IPA_PATH=$(find build/ios/ipa -name "*.ipa" | head -1)
+          echo "ipa_path=$IPA_PATH" >> $GITHUB_OUTPUT
+
+      - name: Upload IPA to Release
+        uses: softprops/action-gh-release@v1
+        if: steps.find_ipa.outputs.ipa_path != ''
+        with:
+          files: ${{ steps.find_ipa.outputs.ipa_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
