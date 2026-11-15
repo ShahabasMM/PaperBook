@@ -111,7 +111,7 @@ cd paperbook
 # Install dependencies
 flutter pub get
 
-# Generate launcher icons (optional, uses assets/logo/paperbook.png)
+# Generate launcher icons (optional, uses assets/logo/paperbook_icon.png)
 python3 tool/generate_icons.py
 
 # Run on your preferred platform
