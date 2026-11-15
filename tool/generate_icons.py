@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Generate every PaperBook launcher/app icon from assets/logo/paperbook.png.
 
-The source art is a black rounded tile with a white open-book mark and a lime
-bookmark, sitting on a white canvas. This script crops away the white canvas,
-extracts the mark and re-composites it crisply at each required size.
+The source art is a full-bleed near-black canvas with a centred white open-book
+mark. This script detects the mark automatically (no hard-coded crop box),
+extracts it with clean alpha, and re-composites it at every required size.
 
 Run from the project root:  python3 tool/generate_icons.py
 """
@@ -12,107 +12,96 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "assets" / "logo" / "paperbook.png"
 
-# Measured from the source artwork (the black tile inside the white canvas).
-TILE_BOX = (321, 337, 933, 927)
-TILE_BG = (3, 3, 3)
-
-# Relative width of the book mark inside the tile (as in the source art).
-MARK_RATIO = 445 / 612.0
-
+# Relative width of the mark inside a square icon.
+MARK_RATIO = 0.64
 # Safer ratios for round / adaptive masks.
-MASKABLE_RATIO = 0.58
-ADAPTIVE_FOREGROUND_RATIO = 0.52
-CONTENT_RATIO = 0.86  # macOS / Windows: tile with breathing room
+MASKABLE_RATIO = 0.56
+ADAPTIVE_FOREGROUND_RATIO = 0.50
+# macOS / Windows: rounded tile with breathing room.
+CONTENT_RATIO = 0.86
+# Rounded-corner radius as a fraction of the tile edge (Apple-style squircle).
+RADIUS_RATIO = 0.225
+
+# The artwork has a soft halo around the mark; ignore anything dimmer than this
+# above the background so icons stay crisp instead of carrying the glow.
+MARK_THRESHOLD = 100
 
 
-def extract_tile(src: Image.Image) -> Image.Image:
-    """Crop the tile and build a faithful alpha silhouette around its corners."""
-    tile = src.crop(TILE_BOX).convert("RGB")
-    w, h = tile.size
-    gray = tile.convert("L")
-    gp = gray.load()
+def background_color(src: Image.Image) -> tuple[int, int, int]:
+    """Median colour of the outer border — the artwork's tile colour."""
+    w, h = src.size
+    px = src.load()
+    samples: list[tuple[int, int, int]] = []
+    for x in range(0, w, 5):
+        samples.append(px[x, 0])
+        samples.append(px[x, h - 1])
+    for y in range(0, h, 5):
+        samples.append(px[0, y])
+        samples.append(px[w - 1, y])
+    samples.sort(key=sum)
+    return samples[len(samples) // 2]
 
-    # Flood-fill the white canvas from the outside; anything not reached is
-    # part of the tile (this also keeps the white book mark opaque).
-    white = [[gp[x, y] > 128 for x in range(w)] for y in range(h)]
-    outside = [[False] * w for _ in range(h)]
-    stack: list[tuple[int, int]] = []
 
-    def seed(x: int, y: int) -> None:
-        if white[y][x] and not outside[y][x]:
-            outside[y][x] = True
-            stack.append((x, y))
-
-    for x in range(w):
-        seed(x, 0)
-        seed(x, h - 1)
-    for y in range(h):
-        seed(0, y)
-        seed(w - 1, y)
-
-    while stack:
-        x, y = stack.pop()
-        if x > 0:
-            seed(x - 1, y)
-        if x + 1 < w:
-            seed(x + 1, y)
-        if y > 0:
-            seed(x, y - 1)
-        if y + 1 < h:
-            seed(x, y + 1)
-
-    alpha = Image.new("L", (w, h), 255)
-    ap = alpha.load()
+def mark_bbox(src: Image.Image, bg: tuple[int, int, int]) -> tuple[int, int, int, int]:
+    """Tight bounding box of the bright mark, ignoring background noise."""
+    w, h = src.size
+    px = src.load()
+    floor = max(bg) + MARK_THRESHOLD
+    min_x, min_y, max_x, max_y = w, h, -1, -1
     for y in range(h):
         for x in range(w):
-            if outside[y][x]:
-                ap[x, y] = 0
-    alpha = alpha.filter(ImageFilter.GaussianBlur(0.6))
+            r, g, b = px[x, y]
+            if max(r, g, b) > floor:
+                if x < min_x:
+                    min_x = x
+                if x > max_x:
+                    max_x = x
+                if y < min_y:
+                    min_y = y
+                if y > max_y:
+                    max_y = y
+    if max_x < 0:
+        raise SystemExit(f"No mark found in {SRC}")
+    return min_x, min_y, max_x, max_y
 
-    tile_rgba = tile.convert("RGBA")
-    tile_rgba.putalpha(alpha)
-    return tile_rgba.crop(alpha.getbbox())
 
-
-def extract_mark(tile_rgba: Image.Image) -> Image.Image:
-    """Return the white/lime book mark on transparency, tightly cropped."""
-    w, h = tile_rgba.size
-    flat = Image.new("RGBA", (w, h), TILE_BG + (255,))
-    flat.alpha_composite(tile_rgba)
-
-    # Only look well inside the tile: this excludes the anti-aliased rim while
-    # still fully containing the mark.
-    inset = 60
-    px = flat.load()
-    min_x, min_y, max_x, max_y = w, h, 0, 0
-    for y in range(inset, h - inset):
-        for x in range(inset, w - inset):
-            if max(px[x, y][:3]) > 40:
-                min_x = min(min_x, x)
-                max_x = max(max_x, x)
-                min_y = min(min_y, y)
-                max_y = max(max_y, y)
-
-    mark = Image.new("RGBA", (max_x - min_x + 1, max_y - min_y + 1), (0, 0, 0, 0))
+def extract_mark(
+    src: Image.Image,
+    bg: tuple[int, int, int],
+    box: tuple[int, int, int, int],
+) -> Image.Image:
+    """White mark on transparency, un-premultiplied from the dark background."""
+    min_x, min_y, max_x, max_y = box
+    w, h = max_x - min_x + 1, max_y - min_y + 1
+    mark = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    px = src.load()
     mp = mark.load()
+    bg_peak = max(bg)
+    floor = bg_peak + MARK_THRESHOLD
+
     for y in range(min_y, max_y + 1):
         for x in range(min_x, max_x + 1):
-            r, g, b, _ = px[x, y]
+            r, g, b = px[x, y]
             peak = max(r, g, b)
-            if peak < 6:
+            if peak <= floor:
                 continue
-            # Un-premultiply from the black background.
-            scale = 255.0 / peak
+            # White mark over a dark tile: the channel value IS the coverage.
+            alpha = round(255 * (peak - bg_peak) / (255 - bg_peak))
+            alpha = max(0, min(255, alpha))
+            if alpha == 0:
+                continue
+            # Un-premultiply so anti-aliased edges stay white, not grey.
+            scale = 255.0 / alpha
             mp[x - min_x, y - min_y] = (
-                min(255, round(r * scale)),
-                min(255, round(g * scale)),
-                min(255, round(b * scale)),
-                peak,
+                min(255, round((r - bg[0]) * scale)),
+                min(255, round((g - bg[1]) * scale)),
+                min(255, round((b - bg[2]) * scale)),
+                alpha,
             )
     return mark
 
@@ -130,35 +119,44 @@ def centered_mark(mark: Image.Image, canvas: int, ratio: float) -> Image.Image:
     return out
 
 
-def full_bleed_icon(mark: Image.Image, size: int) -> Image.Image:
-    out = Image.new("RGBA", (size, size), TILE_BG + (255,))
-    out.alpha_composite(centered_mark(mark, size, MARK_RATIO))
-    return out
+def rounded_mask(size: int, radius_ratio: float) -> Image.Image:
+    """Anti-aliased rounded-square mask, supersampled for smooth corners."""
+    scale = 4
+    big = size * scale
+    radius = int(round(big * radius_ratio))
+    mask = Image.new("L", (big, big), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, big - 1, big - 1), radius=radius, fill=255)
+    return mask.resize((size, size), Image.LANCZOS)
 
 
-def maskable_icon(mark: Image.Image, size: int) -> Image.Image:
-    out = Image.new("RGBA", (size, size), TILE_BG + (255,))
-    out.alpha_composite(centered_mark(mark, size, MASKABLE_RATIO))
-    return out
-
-
-def rounded_tile(tile: Image.Image, size: int) -> Image.Image:
-    """Authentic rounded tile, optionally with macOS/Windows style padding."""
-    scale = (size * CONTENT_RATIO) / max(tile.size)
-    content = (max(1, round(tile.width * scale)), max(1, round(tile.height * scale)))
-    tile = tile.resize(content, Image.LANCZOS)
+def square_icon(
+    mark: Image.Image,
+    size: int,
+    tile: tuple[int, int, int],
+    ratio: float,
+    rounded: bool,
+) -> Image.Image:
     out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    out.alpha_composite(tile, ((size - content[0]) // 2, (size - content[1]) // 2))
+    plate = Image.new("RGBA", (size, size), tuple(tile) + (255,))
+    if rounded:
+        plate.putalpha(rounded_mask(size, RADIUS_RATIO))
+    out.alpha_composite(plate)
+    out.alpha_composite(centered_mark(mark, size, ratio))
     return out
 
 
-def legacy_tile(tile: Image.Image, size: int) -> Image.Image:
-    """Rounded tile that fills the launcher bitmap edge to edge."""
-    scale = size / max(tile.size)
-    content = (max(1, round(tile.width * scale)), max(1, round(tile.height * scale)))
-    tile = tile.resize(content, Image.LANCZOS)
+def rounded_tile(
+    mark: Image.Image,
+    size: int,
+    tile: tuple[int, int, int],
+    ratio: float = MARK_RATIO,
+) -> Image.Image:
+    """Rounded tile with macOS / Windows style padding around it."""
+    content = max(1, round(size * CONTENT_RATIO))
+    inner = square_icon(mark, content, tile, ratio, rounded=True)
     out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    out.alpha_composite(tile, ((size - content[0]) // 2, (size - content[1]) // 2))
+    out.alpha_composite(inner, ((size - content) // 2, (size - content) // 2))
     return out
 
 
@@ -169,25 +167,41 @@ def save_png(image: Image.Image, path: Path) -> None:
 
 def main() -> None:
     src = Image.open(SRC).convert("RGB")
-    tile = extract_tile(src)
-    mark = extract_mark(tile)
-    print(f"tile: {tile.size[0]}x{tile.size[1]}  mark: {mark.size[0]}x{mark.size[1]}")
+    tile = background_color(src)
+    box = mark_bbox(src, tile)
+    mark = extract_mark(src, tile, box)
+    print(f"tile: {tile}  mark box: {box}  mark: {mark.size[0]}x{mark.size[1]}")
 
-    # ---- In-app logo + web splash mark ------------------------------------
-    save_png(full_bleed_icon(mark, 512).convert("RGB"),
-             ROOT / "assets" / "logo" / "paperbook_icon.png")
+    # ---- In-app logo + web splash mark (background-free) ------------------
+    # The mark stays white on transparency; the app tints it to theme ink.
+    save_png(centered_mark(mark, 512, 0.96), ROOT / "assets" / "logo" / "paperbook_icon.png")
     save_png(scaled_mark(mark, 256), ROOT / "web" / "brand-mark.png")
 
     # ---- Android ----------------------------------------------------------
     android_res = ROOT / "android" / "app" / "src" / "main" / "res"
-    for density, size in {"mdpi": 48, "hdpi": 72, "xhdpi": 96,
-                          "xxhdpi": 144, "xxxhdpi": 192}.items():
-        save_png(legacy_tile(tile, size), android_res / f"mipmap-{density}" / "ic_launcher.png")
+    for density, size in {
+        "mdpi": 48,
+        "hdpi": 72,
+        "xhdpi": 96,
+        "xxhdpi": 144,
+        "xxxhdpi": 192,
+    }.items():
+        save_png(
+            square_icon(mark, size, tile, MARK_RATIO, rounded=True),
+            android_res / f"mipmap-{density}" / "ic_launcher.png",
+        )
 
-    for density, size in {"mdpi": 108, "hdpi": 162, "xhdpi": 216,
-                          "xxhdpi": 324, "xxxhdpi": 432}.items():
-        save_png(centered_mark(mark, size, ADAPTIVE_FOREGROUND_RATIO),
-                 android_res / f"mipmap-{density}" / "ic_launcher_foreground.png")
+    for density, size in {
+        "mdpi": 108,
+        "hdpi": 162,
+        "xhdpi": 216,
+        "xxhdpi": 324,
+        "xxxhdpi": 432,
+    }.items():
+        save_png(
+            centered_mark(mark, size, ADAPTIVE_FOREGROUND_RATIO),
+            android_res / f"mipmap-{density}" / "ic_launcher_foreground.png",
+        )
         mono = centered_mark(mark, size, ADAPTIVE_FOREGROUND_RATIO)
         white = Image.new("RGBA", mono.size, (255, 255, 255, 0))
         white.putalpha(mono.getchannel("A"))
@@ -201,7 +215,7 @@ def main() -> None:
         '    <background android:drawable="@color/ic_launcher_background"/>\n'
         '    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n'
         '    <monochrome android:drawable="@mipmap/ic_launcher_monochrome"/>\n'
-        '</adaptive-icon>\n',
+        "</adaptive-icon>\n",
         encoding="utf-8",
     )
     colors = android_res / "values" / "colors.xml"
@@ -209,8 +223,8 @@ def main() -> None:
     if "ic_launcher_background" not in text:
         text = text.replace(
             "</resources>",
-            '    <!-- App icon tile colour. -->\n'
-            '    <color name="ic_launcher_background">#030303</color>\n'
+            "    <!-- App icon tile colour. -->\n"
+            f'    <color name="ic_launcher_background">#{tile[0]:02X}{tile[1]:02X}{tile[2]:02X}</color>\n'
             "</resources>",
         )
         colors.write_text(text)
@@ -235,27 +249,38 @@ def main() -> None:
         "Icon-App-1024x1024@1x.png": 1024,
     }.items():
         # App Store icons must not carry an alpha channel.
-        save_png(full_bleed_icon(mark, size).convert("RGB"), ios / name)
+        save_png(
+            square_icon(mark, size, tile, MARK_RATIO, rounded=False).convert("RGB"),
+            ios / name,
+        )
 
     # ---- macOS ------------------------------------------------------------
     macos = ROOT / "macos" / "Runner" / "Assets.xcassets" / "AppIcon.appiconset"
     for size in (16, 32, 64, 128, 256, 512, 1024):
-        save_png(rounded_tile(tile, size), macos / f"app_icon_{size}.png")
+        save_png(rounded_tile(mark, size, tile), macos / f"app_icon_{size}.png")
 
     # ---- Web --------------------------------------------------------------
     web_icons = ROOT / "web" / "icons"
-    save_png(full_bleed_icon(mark, 192).convert("RGB"), web_icons / "Icon-192.png")
-    save_png(full_bleed_icon(mark, 512).convert("RGB"), web_icons / "Icon-512.png")
-    save_png(maskable_icon(mark, 192).convert("RGB"), web_icons / "Icon-maskable-192.png")
-    save_png(maskable_icon(mark, 512).convert("RGB"), web_icons / "Icon-maskable-512.png")
-    save_png(full_bleed_icon(mark, 64).convert("RGB"), ROOT / "web" / "favicon.png")
+    save_png(square_icon(mark, 192, tile, MARK_RATIO, rounded=False).convert("RGB"),
+             web_icons / "Icon-192.png")
+    save_png(square_icon(mark, 512, tile, MARK_RATIO, rounded=False).convert("RGB"),
+             web_icons / "Icon-512.png")
+    save_png(square_icon(mark, 192, tile, MASKABLE_RATIO, rounded=False).convert("RGB"),
+             web_icons / "Icon-maskable-192.png")
+    save_png(square_icon(mark, 512, tile, MASKABLE_RATIO, rounded=False).convert("RGB"),
+             web_icons / "Icon-maskable-512.png")
+    save_png(square_icon(mark, 64, tile, MARK_RATIO, rounded=False).convert("RGB"),
+             ROOT / "web" / "favicon.png")
 
     # ---- Windows ----------------------------------------------------------
     ico_path = ROOT / "windows" / "runner" / "resources" / "app_icon.ico"
-    frames = [rounded_tile(tile, s) for s in (16, 24, 32, 48, 64, 128, 256)]
-    frames[-1].save(ico_path, format="ICO",
-                    sizes=[(f.width, f.height) for f in frames],
-                    append_images=frames[:-1])
+    frames = [rounded_tile(mark, s, tile) for s in (16, 24, 32, 48, 64, 128, 256)]
+    frames[-1].save(
+        ico_path,
+        format="ICO",
+        sizes=[(f.width, f.height) for f in frames],
+        append_images=frames[:-1],
+    )
 
     print("icons generated")
 

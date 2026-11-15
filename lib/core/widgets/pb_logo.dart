@@ -7,9 +7,13 @@ import '../theme/app_typography.dart';
 
 /// The PaperBook monogram: the open-book mark (no background).
 class PbLogoMark extends StatelessWidget {
-  const PbLogoMark({super.key, this.size = 36});
+  const PbLogoMark({super.key, this.size = 36, this.color});
 
   final double size;
+
+  /// Optional tint. Defaults to the theme ink so the mark stays legible on
+  /// both the light paper background and the dark carbon background.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +26,8 @@ class PbLogoMark extends StatelessWidget {
         height: size,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.medium,
+        color: color ?? context.colors.ink,
+        colorBlendMode: BlendMode.srcIn,
         errorBuilder: (context, error, stackTrace) =>
             _PbLogoMarkFallback(size: size),
       ),

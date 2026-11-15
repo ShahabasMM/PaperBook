@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo/paperbook.png" alt="PaperBook Logo" width="120" height="120">
+  <img src="web/icons/Icon-512.png" alt="PaperBook Logo" width="120" height="120">
   <h1>PaperBook</h1>
   <p><strong>A quiet, offline-first home for receipts, warranties, invoices and the everyday documents that matter.</strong></p>
   <p>Built with Flutter for iOS, Android, and Web.</p>
